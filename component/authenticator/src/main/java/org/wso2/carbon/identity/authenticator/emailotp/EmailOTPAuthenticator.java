@@ -1032,32 +1032,34 @@ public class EmailOTPAuthenticator extends AbstractApplicationAuthenticator
         Map<String, String> emailOTPParameters = getAuthenticatorConfig().getParameterMap();
         boolean showAuthFailureReason =
                 Boolean.parseBoolean(emailOTPParameters.get(EmailOTPAuthenticatorConstants.SHOW_AUTH_FAILURE_REASON));
-        AuthenticatedUser authenticatedUser = getAuthenticatedUser(context);
         try {
-            if (authenticatedUser == null) {
-                throw new AuthenticationFailedException("Authentication failed!. Cannot proceed further without " +
-                        "identifying the user");
-            }
-            if (isLocalUser(context) && EmailOTPUtils.isAccountLocked(authenticatedUser)) {
-                String retryParam;
-                if (showAuthFailureReason) {
-                    long unlockTime = getUnlockTimeInMilliSeconds(authenticatedUser);
-                    long timeToUnlock = unlockTime - System.currentTimeMillis();
-                    if (timeToUnlock > 0) {
-                        queryParams += "&unlockTime=" + Math.round((double) timeToUnlock / 1000 / 60);
-                    }
-                    retryParam = EmailOTPAuthenticatorConstants.ERROR_USER_ACCOUNT_LOCKED;
-                    // Locked reason.
-                    String lockedReason = getLockedReason(authenticatedUser);
-                    if (StringUtils.isNotBlank(lockedReason)) {
-                        queryParams += "&lockedReason=" + lockedReason;
-                    }
-                    queryParams += "&errorCode=" + UserCoreConstants.ErrorCode.USER_IS_LOCKED;
-                } else {
-                    retryParam = EmailOTPAuthenticatorConstants.RETRY_PARAMS;
+            if (isLocalUser(context)) {
+                AuthenticatedUser authenticatedUser = getAuthenticatedUser(context);
+                if (authenticatedUser == null) {
+                    throw new AuthenticationFailedException("Authentication failed!. Cannot proceed further without " +
+                            "identifying the user");
                 }
-                redirectToErrorPage(response, context, emailOTPParameters, queryParams, retryParam);
-                return;
+                if (EmailOTPUtils.isAccountLocked(authenticatedUser)) {
+                    String retryParam;
+                    if (showAuthFailureReason) {
+                        long unlockTime = getUnlockTimeInMilliSeconds(authenticatedUser);
+                        long timeToUnlock = unlockTime - System.currentTimeMillis();
+                        if (timeToUnlock > 0) {
+                            queryParams += "&unlockTime=" + Math.round((double) timeToUnlock / 1000 / 60);
+                        }
+                        retryParam = EmailOTPAuthenticatorConstants.ERROR_USER_ACCOUNT_LOCKED;
+                        // Locked reason.
+                        String lockedReason = getLockedReason(authenticatedUser);
+                        if (StringUtils.isNotBlank(lockedReason)) {
+                            queryParams += "&lockedReason=" + lockedReason;
+                        }
+                        queryParams += "&errorCode=" + UserCoreConstants.ErrorCode.USER_IS_LOCKED;
+                    } else {
+                        retryParam = EmailOTPAuthenticatorConstants.RETRY_PARAMS;
+                    }
+                    redirectToErrorPage(response, context, emailOTPParameters, queryParams, retryParam);
+                    return;
+                }
             }
             if (!context.isRetrying()
                     || (context.isRetrying()
